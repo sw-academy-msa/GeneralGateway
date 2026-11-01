@@ -5,7 +5,7 @@ import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** 검토된 Account API만 공개합니다. Eureka 등록 자체는 외부 공개 권한이 아닙니다. */
+/** 검토된 Account 경로만 공개합니다. Product Command는 구매 Gateway 구성 전까지 연결하지 않습니다. Eureka 등록 자체는 외부 공개 권한이 아닙니다. */
 @Configuration
 public class RoutingConfig {
     @Bean
@@ -19,6 +19,7 @@ public class RoutingConfig {
                 "/api/v1/admin/seller-applications", "/api/v1/admin/seller-applications/**",
                 "/.well-known/jwks.json")
                 .filters(filters -> filters.removeRequestHeader("Origin"))
-                .uri("lb://account-service")).build();
+                .uri("lb://account-service"))
+                .build();
     }
 }

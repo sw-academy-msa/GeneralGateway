@@ -19,6 +19,11 @@ public class RequestTraceFilter implements WebFilter {
                 ? incoming : UUID.randomUUID().toString();
         exchange.getAttributes().put("traceId", traceId);
         exchange.getResponse().getHeaders().set("X-Request-Id", traceId);
+        // 하위 서비스도 같은 헤더를 반환하므로 프록시 응답 병합 후 하나의 추적 ID로 확정합니다.
+        exchange.getResponse().beforeCommit(() -> {
+            exchange.getResponse().getHeaders().set("X-Request-Id", traceId);
+            return Mono.empty();
+        });
         var request = exchange.getRequest().mutate().headers(headers -> {
             headers.set("X-Request-Id", traceId);
             // 서비스는 JWT를 직접 검증하며 외부의 신원 주장 헤더는 전달하지 않습니다.
