@@ -43,7 +43,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/logout", "/api/v1/auth/password-resets", "/api/v1/auth/password-resets/confirm",
                                 "/api/v1/auth/password-resets/complete").permitAll()
                         .pathMatchers("/actuator/**").denyAll()
-                        // 최신 ADMIN/SELLER 권한과 데이터 소유권은 Account에서 다시 검사합니다.
+                        // 최신 권한과 데이터 소유권은 각 업무 서비스에서 다시 검사합니다.
                         .anyExchange().authenticated())
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(new ReactiveJwtAuthenticationConverterAdapter(converter)))
