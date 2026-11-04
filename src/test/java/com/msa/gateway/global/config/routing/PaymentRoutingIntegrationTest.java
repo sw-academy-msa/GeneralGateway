@@ -106,6 +106,14 @@ class PaymentRoutingIntegrationTest {
                 .exchange()
                 .expectStatus()
                 .isForbidden();
+        // POST도 인증·역할 검증에 실패하면 실제 Payment 라우트로 전달하지 않습니다.
+        client.post().uri("/api/v1/payments").exchange().expectStatus().isUnauthorized();
+        client.post()
+                .uri("/api/v1/payments")
+                .headers(h -> h.setBearerAuth(token("SELLER")))
+                .exchange()
+                .expectStatus()
+                .isForbidden();
         Assertions.assertEquals(before, CALLS.get());
     }
 
