@@ -25,6 +25,8 @@ class ProductRoutingIntegrationTest {
     static final RSAKey KEY;
     static final HttpServer JWKS;
     static final HttpServer PRODUCT;
+    static final HttpServer QUERY;
+    static final AtomicInteger QUERY_REQUESTS = new AtomicInteger();
     static final AtomicReference<String> LAST_BEARER = new AtomicReference<>();
     static final AtomicInteger PRODUCT_REQUESTS = new AtomicInteger();
     static {
@@ -59,12 +61,26 @@ class ProductRoutingIntegrationTest {
                 exchange.close();
             });
             PRODUCT.start();
+            QUERY = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+            QUERY.createContext("/", exchange -> {
+                QUERY_REQUESTS.incrementAndGet();
+                boolean cleaned = !exchange.getRequestHeaders().containsKey("Origin")
+                        && !exchange.getRequestHeaders().containsKey("Cookie");
+                byte[] body = ("{\"service\":\"query-fixture\",\"headersCleaned\":" + cleaned + "}").getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(200, body.length);
+                exchange.getResponseBody().write(body);
+                exchange.close();
+            });
+            QUERY.start();
         } catch (Exception exception) { throw new ExceptionInInitializerError(exception); }
     }
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("gateway.auth.jwk-set-uri", () -> "http://127.0.0.1:" + JWKS.getAddress().getPort() + "/.well-known/jwks.json");
+        registry.add("spring.cloud.discovery.client.simple.instances.product-query-service[0].uri",
+                () -> "http://127.0.0.1:" + QUERY.getAddress().getPort());
         // 테스트는 실제 Eureka 대신 동일한 서비스 이름의 discovery fixture를 사용합니다.
         registry.add("spring.cloud.discovery.client.simple.instances.product-command-service[0].uri",
                 () -> "http://127.0.0.1:" + PRODUCT.getAddress().getPort());
@@ -73,7 +89,7 @@ class ProductRoutingIntegrationTest {
     @LocalServerPort int port;
     WebTestClient client;
     @BeforeEach void prepareClient() { client = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build(); }
-    @AfterAll static void stop() { JWKS.stop(0); PRODUCT.stop(0); LAST_BEARER.set(null); }
+    @AfterAll static void stop() { JWKS.stop(0); PRODUCT.stop(0); QUERY.stop(0); LAST_BEARER.set(null); }
 
     @Test
     void productCommandPathsAreNotExposed() throws Exception {
@@ -96,14 +112,32 @@ class ProductRoutingIntegrationTest {
     }
 
     @Test
-    void buyerQueryPathIsNotExposedByCommandRoute() throws Exception {
+    void buyerQueryPathUsesQueryInsteadOfCommandRoute() throws Exception {
         int before = PRODUCT_REQUESTS.get();
         String signedToken = token();
         client.get().uri("/api/v1/products").headers(headers -> headers.setBearerAuth(signedToken))
-                .exchange().expectStatus().isNotFound();
+                .exchange().expectStatus().isOk().expectBody().jsonPath("$.service").isEqualTo("query-fixture");
         Assertions.assertEquals(before, PRODUCT_REQUESTS.get());
     }
 
+    @Test
+    void publicQueryReadsAreAnonymousButWritesAndOwnInquiriesRemainProtected() throws Exception {
+        String signedToken = token();
+        for (String path : List.of("/api/v1/products", "/api/v1/products/schedule", "/api/v1/products/p1",
+                "/api/v1/products/p1/options", "/api/v1/products/p1/faqs", "/api/v1/categories")) {
+            client.get().uri(path).header("Origin", "http://localhost:5173").header("Cookie", "fixture-only=1")
+                    .exchange().expectStatus().isOk().expectBody()
+                    .jsonPath("$.service").isEqualTo("query-fixture")
+                    .jsonPath("$.headersCleaned").isEqualTo(true);
+        }
+        int before = QUERY_REQUESTS.get();
+        client.get().uri("/api/v1/products/p1/inquiries").exchange().expectStatus().isUnauthorized();
+        client.post().uri("/api/v1/products").headers(h -> h.setBearerAuth(signedToken))
+                .exchange().expectStatus().isForbidden();
+        Assertions.assertEquals(before, QUERY_REQUESTS.get());
+        client.get().uri("/api/v1/products/p1/inquiries").headers(h -> h.setBearerAuth(signedToken))
+                .exchange().expectStatus().isOk();
+    }
     private String token() throws Exception {
         var claims = new JWTClaimsSet.Builder().issuer("http://localhost:8080").audience("stockdrop-api")
                 .subject(UUID.randomUUID().toString()).issueTime(new Date()).expirationTime(Date.from(Instant.now().plusSeconds(300)))

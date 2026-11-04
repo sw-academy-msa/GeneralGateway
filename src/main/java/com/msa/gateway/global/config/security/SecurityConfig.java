@@ -43,7 +43,16 @@ public class SecurityConfig {
                                 "/api/v1/auth/logout", "/api/v1/auth/password-resets", "/api/v1/auth/password-resets/confirm",
                                 "/api/v1/auth/password-resets/complete").permitAll()
                         .pathMatchers("/actuator/**").denyAll()
+                        // 공개 상품 GET과 로그인한 구매자의 본인 문의 GET을 구분합니다.
+                        .pathMatchers(HttpMethod.GET, "/api/v1/products/*/inquiries").hasRole("BUYER")
+                        .pathMatchers(HttpMethod.GET, "/api/v1/products", "/api/v1/products/*",
+                                "/api/v1/products/*/options", "/api/v1/products/*/faqs", "/api/v1/categories").permitAll()
+                        .pathMatchers("/api/v1/products", "/api/v1/products/**", "/api/v1/categories").denyAll()
                         // 최신 권한과 데이터 소유권은 각 업무 서비스에서 다시 검사합니다.
+                        // Payment 공개 경로는 BUYER의 GET/POST만 허용하고 나머지 메서드는 차단합니다.
+                        .pathMatchers(HttpMethod.GET, "/api/v1/payments", "/api/v1/payments/**").hasRole("BUYER")
+                        .pathMatchers(HttpMethod.POST, "/api/v1/payments", "/api/v1/payments/**").hasRole("BUYER")
+                        .pathMatchers("/api/v1/payments", "/api/v1/payments/**").denyAll()
                         .anyExchange().authenticated())
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(new ReactiveJwtAuthenticationConverterAdapter(converter)))
