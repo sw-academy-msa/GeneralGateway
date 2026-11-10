@@ -1,6 +1,7 @@
 package com.msa.gateway.global.config.security;
 
 import com.msa.gateway.global.error.GatewayErrors;
+
 import org.springframework.context.annotation.*;
 import org.springframework.http.*;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -9,13 +10,15 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
 import org.springframework.web.cors.*;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+
 import java.util.List;
 
 /** Bearer JWT 경계를 보호하며 쿠키 인증의 CSRF 검증은 Account가 계속 담당합니다. */
 @Configuration
 public class SecurityConfig {
     @Bean
-    public SecurityWebFilterChain security(ServerHttpSecurity http, AuthProperties properties, GatewayErrors errors) {
+    public SecurityWebFilterChain security(
+            ServerHttpSecurity http, AuthProperties properties, GatewayErrors errors) {
         var roles = new JwtGrantedAuthoritiesConverter();
         roles.setAuthoritiesClaimName("roles");
         roles.setAuthorityPrefix("ROLE_");
@@ -29,35 +32,156 @@ public class SecurityConfig {
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .logout(ServerHttpSecurity.LogoutSpec::disable)
-                .exceptionHandling(handler -> handler
-                        .authenticationEntryPoint((exchange, exception) -> errors.write(exchange, HttpStatus.UNAUTHORIZED,
-                                "COMMON_UNAUTHORIZED", "인증이 필요합니다."))
-                        .accessDeniedHandler((exchange, exception) -> errors.write(exchange, HttpStatus.FORBIDDEN,
-                                "COMMON_FORBIDDEN", "요청을 수행할 권한이 없습니다.")))
-                .authorizeExchange(auth -> auth
-                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness",
-                                "/api/v1/auth/csrf", "/.well-known/jwks.json", "/api/v1/signup-options").permitAll()
-                        .pathMatchers(HttpMethod.POST, "/api/v1/auth/signup", "/api/v1/auth/email-verifications",
-                                "/api/v1/auth/email-verifications/confirm", "/api/v1/auth/login", "/api/v1/auth/refresh",
-                                "/api/v1/auth/logout", "/api/v1/auth/password-resets", "/api/v1/auth/password-resets/confirm",
-                                "/api/v1/auth/password-resets/complete").permitAll()
-                        .pathMatchers("/actuator/**").denyAll()
-                        // 공개 상품 GET과 로그인한 구매자의 본인 문의 GET을 구분합니다.
-                        .pathMatchers(HttpMethod.GET, "/api/v1/products/*/inquiries").hasRole("BUYER")
-                        .pathMatchers(HttpMethod.GET, "/api/v1/products", "/api/v1/products/*",
-                                "/api/v1/products/*/options", "/api/v1/products/*/faqs", "/api/v1/categories").permitAll()
-                        .pathMatchers("/api/v1/products", "/api/v1/products/**", "/api/v1/categories").denyAll()
-                        // 최신 권한과 데이터 소유권은 각 업무 서비스에서 다시 검사합니다.
-                        // Payment 공개 경로는 BUYER의 GET/POST만 허용하고 나머지 메서드는 차단합니다.
-                        .pathMatchers(HttpMethod.GET, "/api/v1/payments", "/api/v1/payments/**").hasRole("BUYER")
-                        .pathMatchers(HttpMethod.POST, "/api/v1/payments", "/api/v1/payments/**").hasRole("BUYER")
-                        .pathMatchers("/api/v1/payments", "/api/v1/payments/**").denyAll()
-                        .anyExchange().authenticated())
-                .oauth2ResourceServer(oauth -> oauth
-                        .jwt(jwt -> jwt.jwtAuthenticationConverter(new ReactiveJwtAuthenticationConverterAdapter(converter)))
-                        .authenticationEntryPoint((exchange, exception) -> errors.write(exchange, HttpStatus.UNAUTHORIZED,
-                                "COMMON_UNAUTHORIZED", "인증이 필요합니다.")))
+                .exceptionHandling(
+                        handler ->
+                                handler.authenticationEntryPoint(
+                                                (exchange, exception) ->
+                                                        errors.write(
+                                                                exchange,
+                                                                HttpStatus.UNAUTHORIZED,
+                                                                "COMMON_UNAUTHORIZED",
+                                                                "인증이 필요합니다."))
+                                        .accessDeniedHandler(
+                                                (exchange, exception) ->
+                                                        errors.write(
+                                                                exchange,
+                                                                HttpStatus.FORBIDDEN,
+                                                                "COMMON_FORBIDDEN",
+                                                                "요청을 수행할 권한이 없습니다.")))
+                .authorizeExchange(
+                        auth ->
+                                auth.pathMatchers(HttpMethod.OPTIONS, "/**")
+                                        .permitAll()
+                                        .pathMatchers(
+                                                HttpMethod.GET,
+                                                "/actuator/health",
+                                                "/actuator/health/liveness",
+                                                "/actuator/health/readiness",
+                                                "/api/v1/auth/csrf",
+                                                "/.well-known/jwks.json",
+                                                "/api/v1/signup-options")
+                                        .permitAll()
+                                        .pathMatchers(
+                                                HttpMethod.POST,
+                                                "/api/v1/auth/signup",
+                                                "/api/v1/auth/email-verifications",
+                                                "/api/v1/auth/email-verifications/confirm",
+                                                "/api/v1/auth/login",
+                                                "/api/v1/auth/refresh",
+                                                "/api/v1/auth/logout",
+                                                "/api/v1/auth/password-resets",
+                                                "/api/v1/auth/password-resets/confirm",
+                                                "/api/v1/auth/password-resets/complete")
+                                        .permitAll()
+                                        .pathMatchers("/actuator/**")
+                                        .denyAll()
+                                        // 공개 상품 GET과 로그인한 구매자의 본인 문의 GET을 구분합니다.
+                                        .pathMatchers(
+                                                HttpMethod.GET, "/api/v1/products/*/inquiries")
+                                        .hasRole("BUYER")
+                                        .pathMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/products",
+                                                "/api/v1/products/*",
+                                                "/api/v1/products/*/options",
+                                                "/api/v1/products/*/faqs",
+                                                "/api/v1/categories")
+                                        .permitAll()
+                                        .pathMatchers(
+                                                "/api/v1/products",
+                                                "/api/v1/products/**",
+                                                "/api/v1/categories")
+                                        .denyAll()
+                                        // 최신 권한과 데이터 소유권은 각 업무 서비스에서 다시 검사합니다.
+                                        // Payment 공개 경로는 BUYER의 GET/POST만 허용하고 나머지 메서드는 차단합니다.
+                                        .pathMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/payments",
+                                                "/api/v1/payments/**")
+                                        .hasRole("BUYER")
+                                        .pathMatchers(
+                                                HttpMethod.POST,
+                                                "/api/v1/payments",
+                                                "/api/v1/payments/**")
+                                        .hasRole("BUYER")
+                                        .pathMatchers("/api/v1/payments", "/api/v1/payments/**")
+                                        .denyAll()
+                                        // Query GET의 역할을 제한하며 Command 작업을 일반 Gateway로 우회하지 못하게 합니다.
+                                        .pathMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/orders",
+                                                "/api/v1/orders/*",
+                                                "/api/v1/orders/*/inquiries",
+                                                "/api/v1/orders/*/inquiries/*")
+                                        .hasRole("BUYER")
+                                        .pathMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/seller/orders",
+                                                "/api/v1/seller/orders/*",
+                                                "/api/v1/seller/orders/*/inquiries",
+                                                "/api/v1/seller/orders/*/inquiries/*")
+                                        .hasRole("SELLER")
+                                        .pathMatchers(
+                                                "/api/v1/orders",
+                                                "/api/v1/orders/**",
+                                                "/api/v1/seller/orders",
+                                                "/api/v1/seller/orders/**")
+                                        .denyAll()
+                                        // 분석 결과는 판매자 전용이며 다른 AI 메서드나 내부 경로를 공개하지 않습니다.
+                                        .pathMatchers(
+                                                HttpMethod.GET, "/api/v1/ai/product-analyses/*")
+                                        .hasRole("SELLER")
+                                        .pathMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/ai/analytics/identity",
+                                                "/api/v1/ai/analytics/profile")
+                                        .hasRole("BUYER")
+                                        .pathMatchers(
+                                                HttpMethod.POST, "/api/v1/ai/analytics/identity")
+                                        .hasRole("BUYER")
+                                        .pathMatchers(
+                                                HttpMethod.DELETE, "/api/v1/ai/analytics/identity")
+                                        .hasRole("BUYER")
+                                        .pathMatchers("/api/v1/ai", "/api/v1/ai/**")
+                                        .denyAll()
+                                        // 서비스 JWT는 사용자 역할이 없으므로 알림 사용자 API에 접근할 수 없습니다.
+                                        .pathMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/notifications",
+                                                "/api/v1/notifications/*")
+                                        .hasAnyRole("BUYER", "SELLER", "ADMIN")
+                                        .pathMatchers(
+                                                HttpMethod.POST,
+                                                "/api/v1/notifications/push-subscriptions")
+                                        .hasAnyRole("BUYER", "SELLER", "ADMIN")
+                                        .pathMatchers(
+                                                HttpMethod.PATCH,
+                                                "/api/v1/notifications/*/read",
+                                                "/api/v1/notifications/read-all")
+                                        .hasAnyRole("BUYER", "SELLER", "ADMIN")
+                                        .pathMatchers(
+                                                HttpMethod.DELETE,
+                                                "/api/v1/notifications/push-subscriptions/*")
+                                        .hasAnyRole("BUYER", "SELLER", "ADMIN")
+                                        .pathMatchers(
+                                                "/api/v1/notifications", "/api/v1/notifications/**")
+                                        .denyAll()
+                                        .anyExchange()
+                                        .authenticated())
+                .oauth2ResourceServer(
+                        oauth ->
+                                oauth.jwt(
+                                                jwt ->
+                                                        jwt.jwtAuthenticationConverter(
+                                                                new ReactiveJwtAuthenticationConverterAdapter(
+                                                                        converter)))
+                                        .authenticationEntryPoint(
+                                                (exchange, exception) ->
+                                                        errors.write(
+                                                                exchange,
+                                                                HttpStatus.UNAUTHORIZED,
+                                                                "COMMON_UNAUTHORIZED",
+                                                                "인증이 필요합니다.")))
                 .build();
     }
 
@@ -65,7 +189,8 @@ public class SecurityConfig {
         var config = new CorsConfiguration();
         config.setAllowedOrigins(properties.allowedOrigins());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-XSRF-TOKEN", "X-Request-Id"));
+        config.setAllowedHeaders(
+                List.of("Authorization", "Content-Type", "X-XSRF-TOKEN", "X-Request-Id"));
         config.setExposedHeaders(List.of("X-Request-Id"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
