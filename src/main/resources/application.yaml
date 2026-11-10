@@ -45,12 +45,22 @@ eureka:
     health-check-url-path: /actuator/health
     status-page-url-path: /actuator/health
 management:
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info,prometheus
   endpoint:
     health:
       show-details: never
       probes:
         enabled: true
+
+# 업무 JWT와 분리된 읽기 전용 수집 토큰입니다. 빈 값이면 메트릭 접근을 거부합니다.
+monitoring:
+  scrape-token: ${MONITORING_SCRAPE_TOKEN:}
