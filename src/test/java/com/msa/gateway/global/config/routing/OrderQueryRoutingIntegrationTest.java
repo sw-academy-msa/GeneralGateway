@@ -15,6 +15,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.test.context.*;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import java.time.Duration;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -98,7 +99,8 @@ class OrderQueryRoutingIntegrationTest {
 
     @BeforeEach
     void prepare() {
-        client = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
+        // CI의 첫 요청은 JWKS 조회·HTTP 클라이언트 초기화로 기본 5초 대기를 넘을 수 있어 응답 대기 시간을 늘립니다.
+        client = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).responseTimeout(Duration.ofSeconds(30)).build();
     }
 
     /** summary 정적 경로도 SELLER 전용 Query 라우트로 전달되어야 합니다. */
