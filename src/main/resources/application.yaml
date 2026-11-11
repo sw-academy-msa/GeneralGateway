@@ -19,7 +19,18 @@ spring:
             enabled: false
           x-forwarded:
             enabled: false
+    # 게이트웨이도 Eureka 목록만 믿지 않고 서비스 인스턴스 상태를 주기적으로 확인해 죽은 인스턴스를 라우팅 대상에서 미리 뺍니다.
+    # 요청 본문 재전송 위험 때문에 게이트웨이 재시도는 기존대로 끄고, 연결 실패 재시도는 각 서비스의 내부 호출에서만 합니다.
     loadbalancer:
+      configurations: health-check
+      health-check:
+        # 메일·DB 같은 외부 연결 검사가 들어간 /actuator/health 대신 인스턴스 기동 여부만 보는 readiness를 씁니다.
+        # 전체 health를 10초마다 호출하면 Account의 메일 검사가 SMTP에 반복 로그인해 차단되고 인스턴스가 통째로 제외됩니다.
+        path:
+          default: /actuator/health/readiness
+        interval: 10s
+        refetch-instances: true
+        refetch-instances-interval: 30s
       retry:
         enabled: false
 server:
@@ -45,12 +56,22 @@ eureka:
     health-check-url-path: /actuator/health
     status-page-url-path: /actuator/health
 management:
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info,prometheus
   endpoint:
     health:
       show-details: never
       probes:
         enabled: true
+
+# 업무 JWT와 분리된 읽기 전용 수집 토큰입니다. 빈 값이면 메트릭 접근을 거부합니다.
+monitoring:
+  scrape-token: ${MONITORING_SCRAPE_TOKEN:}

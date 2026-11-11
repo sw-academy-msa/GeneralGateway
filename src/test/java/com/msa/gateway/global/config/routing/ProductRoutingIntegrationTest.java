@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.*;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import java.time.Duration;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -88,7 +89,8 @@ class ProductRoutingIntegrationTest {
 
     @LocalServerPort int port;
     WebTestClient client;
-    @BeforeEach void prepareClient() { client = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build(); }
+    // CI의 첫 요청은 JWKS 조회·HTTP 클라이언트 초기화로 기본 5초 대기를 넘을 수 있어 응답 대기 시간을 늘립니다.
+    @BeforeEach void prepareClient() { client = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).responseTimeout(Duration.ofSeconds(30)).build(); }
     @AfterAll static void stop() { JWKS.stop(0); PRODUCT.stop(0); QUERY.stop(0); LAST_BEARER.set(null); }
 
     @Test

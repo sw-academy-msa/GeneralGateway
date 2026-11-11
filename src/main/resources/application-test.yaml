@@ -2,3 +2,8 @@
 eureka:
   client:
     enabled: false
+# 고정 fixture에는 /actuator/health가 없으므로 상태 확인 대신 기본 인스턴스 목록을 씁니다.
+spring:
+  cloud:
+    loadbalancer:
+      configurations: default

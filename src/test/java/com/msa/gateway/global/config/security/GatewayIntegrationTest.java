@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import java.time.Duration;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -88,7 +89,8 @@ class GatewayIntegrationTest {
     }
     @LocalServerPort int port;
     WebTestClient client;
-    @BeforeEach void client() { client = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build(); }
+    // CI의 첫 요청은 JWKS 조회·HTTP 클라이언트 초기화로 기본 5초 대기를 넘을 수 있어 응답 대기 시간을 늘립니다.
+    @BeforeEach void client() { client = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).responseTimeout(Duration.ofSeconds(30)).build(); }
     @AfterAll static void stop() { ACCOUNT.stop(0); }
 
     @Test void publicRoutePreservesPathAndRemovesUntrustedHeaders() {

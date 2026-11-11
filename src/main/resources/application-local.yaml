@@ -2,3 +2,8 @@
 logging:
   level:
     com.msa.gateway: INFO
+
+spring:
+  config:
+    # 로컬 수집 토큰만 가져오며 운영 비밀값은 외부에서 주입합니다.
+    import: optional:file:./.env[.properties]
