@@ -1,0 +1,27 @@
+# develop을 main에 머지(= main push)하면 이 서비스만 빌드해 운영에 배포합니다.
+# 실제 작업은 Infra 레포의 공통 워크플로가 합니다: arm64 빌드 → ECR push → SSM release 태그 → 서버 한 대씩 재배포.
+# 조직 변수 AWS_ACCOUNT_ID가 없으면(AWS 적용 전) 빌드 확인까지만 합니다. AWS 키는 GitHub에 저장하지 않습니다(OIDC).
+name: CD
+
+on:
+  push:
+    branches: [main]
+  # 같은 커밋을 다시 배포하거나 롤백할 때 Actions 화면에서 직접 실행합니다(main 브랜치에서만 역할을 받을 수 있음).
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+# 같은 서비스 배포가 겹치지 않게 순서대로 실행합니다. 진행 중인 배포는 취소하지 않습니다.
+concurrency:
+  group: cd-gateway
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    uses: sw-academy-msa/Infra/.github/workflows/deploy-service.yaml@main
+    with:
+      service: gateway
+      pool: general
+      aws_account_id: ${{ vars.AWS_ACCOUNT_ID }}
