@@ -1,0 +1,14 @@
+.gradle/
+build/
+.idea/
+.vscode/
+*.iml
+.env
+.env.*
+!.env.example
+.keys/
+*.log
+logs/
+# 기존 Account의 로컬 상세 문서 관리 규칙을 따릅니다. 기존 추적 README는 유지합니다.
+/docs/
+/AGENTS.md

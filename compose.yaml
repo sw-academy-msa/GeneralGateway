@@ -1,0 +1,16 @@
+# 업무 EC2의 호스트 공개 포트와 Eureka 광고 포트는 일치해야 합니다.
+services:
+  gateway:
+    build: .
+    ports:
+      - "${GATEWAY_BIND_ADDRESS:-127.0.0.1}:${SERVICE_PORT:-8000}:8000"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      EUREKA_DEFAULT_ZONE: ${EUREKA_DEFAULT_ZONE:?Eureka A/B 주소 필요}
+      SERVICE_HOSTNAME: ${SERVICE_HOSTNAME:?접근 가능한 호스트 필요}
+      SERVICE_PORT: ${SERVICE_PORT:-8000}
+      SERVICE_INSTANCE_ID: ${SERVICE_INSTANCE_ID:?고유 ID 필요}
+      JWT_ISSUER: ${JWT_ISSUER:?Account issuer 필요}
+      ACCOUNT_JWKS_URI: ${ACCOUNT_JWKS_URI:?내부 JWKS 주소 필요}
+      APP_ALLOWED_ORIGINS: ${APP_ALLOWED_ORIGINS:?정확한 프론트 Origin 필요}
+    restart: unless-stopped

@@ -1,0 +1,14 @@
+# 필수 운영 주소는 배포 환경에서 주입하며 로컬 기본값으로 대체하지 않습니다.
+gateway:
+  auth:
+    issuer: ${JWT_ISSUER}
+    jwk-set-uri: ${ACCOUNT_JWKS_URI}
+    allowed-origins: ${APP_ALLOWED_ORIGINS}
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE}
+  instance:
+    hostname: ${SERVICE_HOSTNAME}
+    instance-id: ${spring.application.name}:${SERVICE_INSTANCE_ID}
+    non-secure-port: ${SERVICE_PORT}

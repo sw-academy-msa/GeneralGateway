@@ -1,0 +1,9 @@
+# 로컬도 Eureka를 통해 Account를 찾습니다. 외부 AWS 자격증명은 필요하지 않습니다.
+logging:
+  level:
+    com.msa.gateway: INFO
+
+spring:
+  config:
+    # 로컬 수집 토큰만 가져오며 운영 비밀값은 외부에서 주입합니다.
+    import: optional:file:./.env[.properties]
