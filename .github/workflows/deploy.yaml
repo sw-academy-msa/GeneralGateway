@@ -6,16 +6,19 @@ name: CD
 on:
   push:
     branches: [main]
-  # 같은 커밋을 다시 배포하거나 롤백할 때 Actions 화면에서 직접 실행합니다(main 브랜치에서만 역할을 받을 수 있음).
+  # 수동 실행은 main의 최신 커밋을 다시 배포합니다(롤백 아님). main 브랜치에서만 배포 역할을 받을 수 있습니다.
+  # 이전 버전으로 되돌릴 때는 Actions에서 그 버전의 성공한 CD 실행을 Re-run 하거나(같은 커밋 이미지를 재사용),
+  # 실행 요약에 나오는 롤백 명령을 씁니다.
   workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
 
-# 같은 서비스 배포가 겹치지 않게 순서대로 실행합니다. 진행 중인 배포는 취소하지 않습니다.
+# 같은 서비스·같은 브랜치의 배포는 순서대로 실행하고, 진행 중인 배포는 취소하지 않습니다.
+# 대기 중인 실행은 더 새 실행으로 바뀝니다(최신 커밋만 배포). 다른 브랜치의 수동 실행은 main 대기열에 끼어들지 않습니다.
 concurrency:
-  group: cd-gateway
+  group: cd-gateway-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
