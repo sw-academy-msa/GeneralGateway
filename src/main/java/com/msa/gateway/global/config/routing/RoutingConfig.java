@@ -30,6 +30,10 @@ public class RoutingConfig {
                                                 "/api/v1/sellers/me/**",
                                                 "/api/v1/admin/seller-applications",
                                                 "/api/v1/admin/seller-applications/**",
+                                                "/api/v1/support-inquiries",
+                                                "/api/v1/support-inquiries/**",
+                                                "/api/v1/admin/support-inquiries",
+                                                "/api/v1/admin/support-inquiries/**",
                                                 "/.well-known/jwks.json")
                                         .filters(filters -> filters.removeRequestHeader("Origin"))
                                         .uri("lb://account-service"))
