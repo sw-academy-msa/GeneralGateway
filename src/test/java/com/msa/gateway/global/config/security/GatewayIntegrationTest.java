@@ -107,6 +107,11 @@ class GatewayIntegrationTest {
                 .exchange().expectStatus().isUnauthorized();
         client.get().uri("/api/v1/accounts/me").headers(h -> h.setBearerAuth(valid))
                 .exchange().expectStatus().isOk();
+        // 1:1 문의는 Account로 간다
+        client.get().uri("/api/v1/support-inquiries").headers(h -> h.setBearerAuth(valid))
+                .exchange().expectStatus().isOk();
+        client.get().uri("/api/v1/admin/support-inquiries").headers(h -> h.setBearerAuth(valid))
+                .exchange().expectStatus().isOk();
         client.get().uri("/actuator/env").headers(h -> h.setBearerAuth(valid))
                 .exchange().expectStatus().isForbidden();
         client.get().uri("/actuator/health").exchange().expectStatus().isOk();
