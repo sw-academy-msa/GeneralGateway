@@ -92,6 +92,13 @@ public class SecurityConfig {
                                                 "/api/v1/products/**",
                                                 "/api/v1/categories")
                                         .denyAll()
+                                        // 홈 카테고리 탭용 공개 카탈로그 GET 하나만 Product Command에 엽니다.
+                                        .pathMatchers(HttpMethod.GET, "/api/v1/category-catalog")
+                                        .permitAll()
+                                        .pathMatchers(
+                                                "/api/v1/category-catalog",
+                                                "/api/v1/category-catalog/**")
+                                        .denyAll()
                                         // 최신 권한과 데이터 소유권은 각 업무 서비스에서 다시 검사합니다.
                                         // Payment 공개 경로는 BUYER의 GET/POST만 허용하고 나머지 메서드는 차단합니다.
                                         .pathMatchers(

@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * 일반 업무 API와 Product/Order Query GET을 연결합니다. Command는 PurchaseGateway에 두며 Eureka 등록만으로 경로를 공개하지
- * 않습니다.
+ * 않습니다. 예외는 Product Command의 공개 카테고리 카탈로그 GET 하나입니다.
  */
 @Configuration
 public class RoutingConfig {
@@ -54,6 +54,20 @@ public class RoutingConfig {
                                                         filters.removeRequestHeader("Origin")
                                                                 .removeRequestHeader("Cookie"))
                                         .uri("lb://product-query-service"))
+                // 공개 카테고리 카탈로그 GET만 Product Command로 연결합니다. 공개 자료라 인증 헤더와 쿠키는 넘기지 않습니다.
+                .route(
+                        "product-category-catalog",
+                        route ->
+                                route.path("/api/v1/category-catalog")
+                                        .and()
+                                        .method(org.springframework.http.HttpMethod.GET)
+                                        .filters(
+                                                filters ->
+                                                        filters.removeRequestHeader("Origin")
+                                                                .removeRequestHeader("Cookie")
+                                                                .removeRequestHeader(
+                                                                        "Authorization"))
+                                        .uri("lb://product-command-service"))
                 // 주문 목록·상세·문의 GET만 Query로 연결하며 checkout/편집 조회는 구매 Gateway에 둡니다.
                 .route(
                         "order-query",
