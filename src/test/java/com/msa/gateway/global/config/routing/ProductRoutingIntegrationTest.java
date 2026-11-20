@@ -140,6 +140,36 @@ class ProductRoutingIntegrationTest {
         client.get().uri("/api/v1/products/p1/inquiries").headers(h -> h.setBearerAuth(signedToken))
                 .exchange().expectStatus().isOk();
     }
+    @Test
+    void publicCategoryCatalogGetIsTheOnlyAnonymousCommandRead() throws Exception {
+        // 공개 카탈로그 GET 하나만 Product Command로 전달하고 인증 헤더와 쿠키는 넘기지 않습니다.
+        int before = PRODUCT_REQUESTS.get();
+        client.get().uri("/api/v1/category-catalog").header("Origin", "http://localhost:5173")
+                .header("Cookie", "fixture-only=1").exchange().expectStatus().isOk().expectBody()
+                .jsonPath("$.service").isEqualTo("product-fixture")
+                .jsonPath("$.path").isEqualTo("/api/v1/category-catalog");
+        Assertions.assertEquals(before + 1, PRODUCT_REQUESTS.get());
+        String signedToken = token();
+        client.get().uri("/api/v1/category-catalog").headers(h -> h.setBearerAuth(signedToken))
+                .exchange().expectStatus().isOk();
+        Assertions.assertNull(LAST_BEARER.get());
+        Assertions.assertEquals(before + 2, PRODUCT_REQUESTS.get());
+        // 다른 메서드, 하위 경로, 판매자 등록 메타데이터는 전달하지 않습니다.
+        client.post().uri("/api/v1/category-catalog").exchange().expectStatus().isUnauthorized();
+        client.post().uri("/api/v1/category-catalog").headers(h -> h.setBearerAuth(signedToken))
+                .exchange().expectStatus().isForbidden();
+        client.delete().uri("/api/v1/category-catalog").headers(h -> h.setBearerAuth(signedToken))
+                .exchange().expectStatus().isForbidden();
+        client.get().uri("/api/v1/category-catalog/CLOTHING").exchange().expectStatus().isUnauthorized();
+        client.get().uri("/api/v1/category-catalog/CLOTHING").headers(h -> h.setBearerAuth(signedToken))
+                .exchange().expectStatus().isForbidden();
+        client.get().uri("/api/v1/seller/products/registration-metadata").exchange()
+                .expectStatus().isUnauthorized();
+        client.get().uri("/api/v1/seller/products/registration-metadata")
+                .headers(h -> h.setBearerAuth(signedToken)).exchange().expectStatus().isNotFound();
+        Assertions.assertEquals(before + 2, PRODUCT_REQUESTS.get());
+    }
+
     private String token() throws Exception {
         var claims = new JWTClaimsSet.Builder().issuer("http://localhost:8080").audience("stockdrop-api")
                 .subject(UUID.randomUUID().toString()).issueTime(new Date()).expirationTime(Date.from(Instant.now().plusSeconds(300)))
