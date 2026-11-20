@@ -163,6 +163,19 @@ public class SecurityConfig {
                                                 HttpMethod.DELETE,
                                                 "/api/v1/notifications/push-subscriptions/*")
                                         .hasAnyRole("BUYER", "SELLER", "ADMIN")
+                                        // 상품 알림 신청과 취소는 구매자만, 단건 조회는 Notification과 같이 로그인 사용자 역할에 엽니다.
+                                        .pathMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/notifications/product-alerts/*")
+                                        .hasAnyRole("BUYER", "SELLER", "ADMIN")
+                                        .pathMatchers(
+                                                HttpMethod.PUT,
+                                                "/api/v1/notifications/product-alerts/*")
+                                        .hasRole("BUYER")
+                                        .pathMatchers(
+                                                HttpMethod.DELETE,
+                                                "/api/v1/notifications/product-alerts/*")
+                                        .hasRole("BUYER")
                                         .pathMatchers(
                                                 "/api/v1/notifications", "/api/v1/notifications/**")
                                         .denyAll()

@@ -171,6 +171,21 @@ public class RoutingConfig {
                                                         f.removeRequestHeader("Origin")
                                                                 .removeRequestHeader("Cookie"))
                                         .uri("lb://notification-service"))
+                // 상품 상세의 '알림 받기' 신청, 취소, 단건 조회입니다.
+                .route(
+                        "notifications-product-alert",
+                        r ->
+                                r.path("/api/v1/notifications/product-alerts/*")
+                                        .and()
+                                        .method(
+                                                org.springframework.http.HttpMethod.GET,
+                                                org.springframework.http.HttpMethod.PUT,
+                                                org.springframework.http.HttpMethod.DELETE)
+                                        .filters(
+                                                f ->
+                                                        f.removeRequestHeader("Origin")
+                                                                .removeRequestHeader("Cookie"))
+                                        .uri("lb://notification-service"))
                 .build();
     }
 }
