@@ -159,6 +159,80 @@ class NotificationRoutingIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(CALLS.get()).isEqualTo(before);
     }
 
+    @Test
+    void productAlertRoutesReachNotificationOnlyForAllowedRoles() throws Exception {
+        String path = "/api/v1/notifications/product-alerts/11111111-1111-1111-1111-111111111111";
+        for (String role : List.of("BUYER", "SELLER", "ADMIN"))
+            client.get()
+                    .uri(path)
+                    .headers(h -> h.setBearerAuth(token(role)))
+                    .exchange()
+                    .expectStatus()
+                    .isOk()
+                    .expectBody()
+                    .jsonPath("$.headersCleaned")
+                    .isEqualTo(true);
+        client.put()
+                .uri(path)
+                .headers(h -> h.setBearerAuth(token("BUYER")))
+                .header("Cookie", "SESSION=x")
+                .header("Origin", "http://localhost:5173")
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .jsonPath("$.headersCleaned")
+                .isEqualTo(true);
+        client.delete()
+                .uri(path)
+                .headers(h -> h.setBearerAuth(token("BUYER")))
+                .exchange()
+                .expectStatus()
+                .isOk();
+    }
+
+    @Test
+    void productAlertRoutesRejectAnonymousAndOtherRoles() throws Exception {
+        String path = "/api/v1/notifications/product-alerts/11111111-1111-1111-1111-111111111111";
+        int before = CALLS.get();
+        client.get().uri(path).exchange().expectStatus().isUnauthorized();
+        client.put().uri(path).exchange().expectStatus().isUnauthorized();
+        client.delete().uri(path).exchange().expectStatus().isUnauthorized();
+        for (String role : List.of("SELLER", "ADMIN")) {
+            client.put()
+                    .uri(path)
+                    .headers(h -> h.setBearerAuth(token(role)))
+                    .exchange()
+                    .expectStatus()
+                    .isForbidden();
+            client.delete()
+                    .uri(path)
+                    .headers(h -> h.setBearerAuth(token(role)))
+                    .exchange()
+                    .expectStatus()
+                    .isForbidden();
+        }
+        client.get()
+                .uri(path)
+                .headers(h -> h.setBearerAuth(token("SERVICE")))
+                .exchange()
+                .expectStatus()
+                .isForbidden();
+        client.post()
+                .uri(path)
+                .headers(h -> h.setBearerAuth(token("BUYER")))
+                .exchange()
+                .expectStatus()
+                .isForbidden();
+        client.put()
+                .uri(path + "/extra")
+                .headers(h -> h.setBearerAuth(token("BUYER")))
+                .exchange()
+                .expectStatus()
+                .isForbidden();
+        org.assertj.core.api.Assertions.assertThat(CALLS.get()).isEqualTo(before);
+    }
+
     private String token(String role) {
         try {
             var claims =
