@@ -40,6 +40,15 @@ class DifferentInstanceLoadBalancerTest {
     }
 
     @Test
+    void retryDoesNotShiftFirstAttemptRotation() {
+        var balancer = balancer(A, B);
+        // A 실패 후 B로 재시도해도 다음 첫 시도는 B, 그다음은 A로 고르게 돌아갑니다.
+        assertThat(choose(balancer, null)).isEqualTo(A);
+        assertThat(choose(balancer, A)).isEqualTo(B);
+        assertThat(List.of(choose(balancer, null), choose(balancer, null))).containsExactly(B, A);
+    }
+
+    @Test
     void sameAddressWithAnotherIdIsAlsoExcluded() {
         var balancer = balancer(A, B);
         ServiceInstance renamed = new DefaultServiceInstance("other-id", "svc", "a", 8081, false);

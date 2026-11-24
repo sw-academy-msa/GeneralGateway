@@ -21,7 +21,9 @@ import reactor.core.publisher.Mono;
  */
 final class DifferentInstanceLoadBalancer implements ReactorServiceInstanceLoadBalancer {
     private final ObjectProvider<ServiceInstanceListSupplier> supplier;
+    // 재시도 선택이 첫 시도 순번을 밀면 실패 인스턴스가 매번 첫 시도로 걸리므로 순번을 따로 둡니다.
     private final AtomicInteger position = new AtomicInteger();
+    private final AtomicInteger retryPosition = new AtomicInteger();
 
     DifferentInstanceLoadBalancer(ObjectProvider<ServiceInstanceListSupplier> supplier) {
         this.supplier = supplier;
@@ -54,8 +56,9 @@ final class DifferentInstanceLoadBalancer implements ReactorServiceInstanceLoadB
         if (candidates.isEmpty()) {
             return new EmptyResponse();
         }
+        AtomicInteger cursor = excluded == null ? position : retryPosition;
         return new DefaultResponse(
-                candidates.get(Math.floorMod(position.getAndIncrement(), candidates.size())));
+                candidates.get(Math.floorMod(cursor.getAndIncrement(), candidates.size())));
     }
 
     private static boolean sameAddress(ServiceInstance instance, ServiceInstance excluded) {

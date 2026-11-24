@@ -56,7 +56,8 @@ eureka:
     service-url:
       defaultZone: ${EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
   instance:
-    # heartbeat 3회 누락에 해당하는 30초 후 만료 대상으로 판단합니다.
+    # heartbeat 10초, 임대 30초입니다. Eureka 서버는 마지막 갱신 시각에 임대 기간을 두 번 더해 만료를 판단하므로
+    # heartbeat가 끊긴 인스턴스는 약 60초 뒤 제거됩니다(기존 기본값은 약 180초).
     lease-renewal-interval-in-seconds: 10
     lease-expiration-duration-in-seconds: 30
     hostname: ${SERVICE_HOSTNAME:localhost}
