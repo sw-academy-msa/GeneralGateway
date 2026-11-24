@@ -12,7 +12,9 @@ spring:
             locator:
               enabled: false
           httpclient:
-            connect-timeout: 3000
+            # 같은 VPC 안의 연결은 1초 안에 맺어지므로, 죽은 인스턴스를 빨리 포기하고 조회 재시도로 넘깁니다.
+            connect-timeout: 1000
+            # 응답 시간 초과는 서버가 이미 처리 중일 수 있어 재시도하지 않습니다.
             response-timeout: 10s
           # 외부 Forwarded 값을 재사용하지 않습니다. ALB 신뢰 정책은 배포 문서를 따릅니다.
           forwarded:
@@ -20,17 +22,20 @@ spring:
           x-forwarded:
             enabled: false
     # 게이트웨이도 Eureka 목록만 믿지 않고 서비스 인스턴스 상태를 주기적으로 확인해 죽은 인스턴스를 라우팅 대상에서 미리 뺍니다.
-    # 요청 본문 재전송 위험 때문에 게이트웨이 재시도는 기존대로 끄고, 연결 실패 재시도는 각 서비스의 내부 호출에서만 합니다.
+    # LoadBalancer 자체 재시도는 끄고, 조회(GET, HEAD)만 라우트 Retry 필터로 다른 인스턴스에 1회 재시도합니다(SafeReadRetryConfig).
     loadbalancer:
+      # Eureka와 health supplier의 캐시 위에 별도 캐시를 중첩하지 않습니다.
+      cache:
+        enabled: false
       configurations: health-check
       health-check:
         # 메일·DB 같은 외부 연결 검사가 들어간 /actuator/health 대신 인스턴스 기동 여부만 보는 readiness를 씁니다.
-        # 전체 health를 10초마다 호출하면 Account의 메일 검사가 SMTP에 반복 로그인해 차단되고 인스턴스가 통째로 제외됩니다.
+        # 전체 health를 주기적으로 호출하면 Account의 메일 검사가 SMTP에 반복 로그인해 차단되고 인스턴스가 통째로 제외됩니다.
         path:
           default: /actuator/health/readiness
-        interval: 10s
+        interval: 5s
         refetch-instances: true
-        refetch-instances-interval: 30s
+        refetch-instances-interval: 5s
       retry:
         enabled: false
 server:
@@ -45,10 +50,15 @@ gateway:
     allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
 eureka:
   client:
+    # 서버에서 제거된 인스턴스를 5초 주기로 반영합니다.
+    registry-fetch-interval-seconds: 5
     enabled: ${EUREKA_CLIENT_ENABLED:true}
     service-url:
       defaultZone: ${EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
   instance:
+    # heartbeat 3회 누락에 해당하는 30초 후 만료 대상으로 판단합니다.
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
     hostname: ${SERVICE_HOSTNAME:localhost}
     prefer-ip-address: false
     instance-id: ${spring.application.name}:${SERVICE_INSTANCE_ID:${random.uuid}}
