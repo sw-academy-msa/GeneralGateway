@@ -170,7 +170,8 @@ public class SecurityConfig {
                                                 HttpMethod.DELETE,
                                                 "/api/v1/notifications/push-subscriptions/*")
                                         .hasAnyRole("BUYER", "SELLER", "ADMIN")
-                                        // 상품 알림 신청과 취소는 구매자만, 단건 조회는 Notification과 같이 로그인 사용자 역할에 엽니다.
+                                        // 상품 알림 신청과 취소는 구매자만, 단건 조회는 Notification과 같이 로그인 사용자 역할에
+                                        // 엽니다.
                                         .pathMatchers(
                                                 HttpMethod.GET,
                                                 "/api/v1/notifications/product-alerts/*")
@@ -186,6 +187,13 @@ public class SecurityConfig {
                                         .pathMatchers(
                                                 "/api/v1/notifications", "/api/v1/notifications/**")
                                         .denyAll()
+                                        // 캠페인 단건 GET만 익명이고 받기와 관리 API는 역할을 검사합니다.
+                                        .pathMatchers(HttpMethod.GET, "/api/v1/coupons/campaigns/*")
+                                        .permitAll()
+                                        .pathMatchers("/api/v1/admin/coupons/**")
+                                        .hasRole("ADMIN")
+                                        .pathMatchers("/api/v1/coupons", "/api/v1/coupons/**")
+                                        .hasRole("BUYER")
                                         .anyExchange()
                                         .authenticated())
                 .oauth2ResourceServer(
