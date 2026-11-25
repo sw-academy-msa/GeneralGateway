@@ -13,6 +13,19 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class RoutingConfig {
+    private final boolean couponEnabled;
+    private final boolean aiEventsEnabled;
+
+    public RoutingConfig(
+            @org.springframework.beans.factory.annotation.Value("${GATEWAY_COUPON_ENABLED:false}")
+                    boolean couponEnabled,
+            @org.springframework.beans.factory.annotation.Value(
+                            "${GATEWAY_AI_EVENTS_ENABLED:false}")
+                    boolean aiEventsEnabled) {
+        this.couponEnabled = couponEnabled;
+        this.aiEventsEnabled = aiEventsEnabled;
+    }
+
     @Bean
     public RouteLocator accountRoutes(
             RouteLocatorBuilder builder, @Qualifier("safeReadRetry") GatewayFilter safeReadRetry) {
@@ -39,7 +52,10 @@ public class RoutingConfig {
                                                 "/api/v1/admin/support-inquiries",
                                                 "/api/v1/admin/support-inquiries/**",
                                                 "/.well-known/jwks.json")
-                                        .filters(filters -> filters.filter(safeReadRetry).removeRequestHeader("Origin"))
+                                        .filters(
+                                                filters ->
+                                                        filters.filter(safeReadRetry)
+                                                                .removeRequestHeader("Origin"))
                                         .uri("lb://account-service"))
                 // Query는 GET만 허용합니다. 상품 문의 POST와 판매자 변경은 PurchaseGateway 책임입니다.
                 .route(
@@ -55,7 +71,8 @@ public class RoutingConfig {
                                         .method(org.springframework.http.HttpMethod.GET)
                                         .filters(
                                                 filters ->
-                                                        filters.filter(safeReadRetry).removeRequestHeader("Origin")
+                                                        filters.filter(safeReadRetry)
+                                                                .removeRequestHeader("Origin")
                                                                 .removeRequestHeader("Cookie"))
                                         .uri("lb://product-query-service"))
                 // 공개 카테고리 카탈로그 GET만 Product Command로 연결합니다. 공개 자료라 인증 헤더와 쿠키는 넘기지 않습니다.
@@ -87,7 +104,8 @@ public class RoutingConfig {
                                         .method(org.springframework.http.HttpMethod.GET)
                                         .filters(
                                                 filters ->
-                                                        filters.filter(safeReadRetry).removeRequestHeader("Origin")
+                                                        filters.filter(safeReadRetry)
+                                                                .removeRequestHeader("Origin")
                                                                 .removeRequestHeader("Cookie"))
                                         .uri("lb://order-query-service"))
                 // Payment 경로 예약이며 내부·Actuator 경로는 외부로 공개하지 않습니다.
@@ -101,7 +119,8 @@ public class RoutingConfig {
                                                 org.springframework.http.HttpMethod.POST)
                                         .filters(
                                                 filters ->
-                                                        filters.filter(safeReadRetry).removeRequestHeader("Origin")
+                                                        filters.filter(safeReadRetry)
+                                                                .removeRequestHeader("Origin")
                                                                 .removeRequestHeader("Cookie"))
                                         .uri("lb://payment-service"))
                 // AI 원본 변경 요청은 Product Command에 두고 본인 결과 조회만 연결합니다.
@@ -113,7 +132,8 @@ public class RoutingConfig {
                                         .method(org.springframework.http.HttpMethod.GET)
                                         .filters(
                                                 filters ->
-                                                        filters.filter(safeReadRetry).removeRequestHeader("Origin")
+                                                        filters.filter(safeReadRetry)
+                                                                .removeRequestHeader("Origin")
                                                                 .removeRequestHeader("Cookie"))
                                         .uri("lb://ai-service"))
                 .route(
@@ -126,7 +146,8 @@ public class RoutingConfig {
                                         .method(org.springframework.http.HttpMethod.GET)
                                         .filters(
                                                 filters ->
-                                                        filters.filter(safeReadRetry).removeRequestHeader("Origin")
+                                                        filters.filter(safeReadRetry)
+                                                                .removeRequestHeader("Origin")
                                                                 .removeRequestHeader("Cookie"))
                                         .uri("lb://ai-service"))
                 .route(
@@ -139,7 +160,22 @@ public class RoutingConfig {
                                                 org.springframework.http.HttpMethod.DELETE)
                                         .filters(
                                                 filters ->
-                                                        filters.filter(safeReadRetry).removeRequestHeader("Origin")
+                                                        filters.filter(safeReadRetry)
+                                                                .removeRequestHeader("Origin")
+                                                                .removeRequestHeader("Cookie"))
+                                        .uri("lb://ai-service"))
+                // 행동 이벤트 수집은 쓰기이므로 재시도하지 않고 플래그를 켰을 때만 연결합니다.
+                .route(
+                        "ai-behavior-events",
+                        route ->
+                                route.path("/api/v1/ai/events")
+                                        .and()
+                                        .method(org.springframework.http.HttpMethod.POST)
+                                        .and()
+                                        .predicate(exchange -> aiEventsEnabled)
+                                        .filters(
+                                                filters ->
+                                                        filters.removeRequestHeader("Origin")
                                                                 .removeRequestHeader("Cookie"))
                                         .uri("lb://ai-service"))
                 // Notification의 알림함과 구독 API만 공개합니다. 내부 수신 자격 API는 제외합니다.
@@ -151,7 +187,8 @@ public class RoutingConfig {
                                         .method(org.springframework.http.HttpMethod.GET)
                                         .filters(
                                                 f ->
-                                                        f.filter(safeReadRetry).removeRequestHeader("Origin")
+                                                        f.filter(safeReadRetry)
+                                                                .removeRequestHeader("Origin")
                                                                 .removeRequestHeader("Cookie"))
                                         .uri("lb://notification-service"))
                 .route(
@@ -162,7 +199,8 @@ public class RoutingConfig {
                                         .method(org.springframework.http.HttpMethod.POST)
                                         .filters(
                                                 f ->
-                                                        f.filter(safeReadRetry).removeRequestHeader("Origin")
+                                                        f.filter(safeReadRetry)
+                                                                .removeRequestHeader("Origin")
                                                                 .removeRequestHeader("Cookie"))
                                         .uri("lb://notification-service"))
                 .route(
@@ -175,7 +213,8 @@ public class RoutingConfig {
                                         .method(org.springframework.http.HttpMethod.PATCH)
                                         .filters(
                                                 f ->
-                                                        f.filter(safeReadRetry).removeRequestHeader("Origin")
+                                                        f.filter(safeReadRetry)
+                                                                .removeRequestHeader("Origin")
                                                                 .removeRequestHeader("Cookie"))
                                         .uri("lb://notification-service"))
                 .route(
@@ -186,7 +225,8 @@ public class RoutingConfig {
                                         .method(org.springframework.http.HttpMethod.DELETE)
                                         .filters(
                                                 f ->
-                                                        f.filter(safeReadRetry).removeRequestHeader("Origin")
+                                                        f.filter(safeReadRetry)
+                                                                .removeRequestHeader("Origin")
                                                                 .removeRequestHeader("Cookie"))
                                         .uri("lb://notification-service"))
                 // 상품 상세의 '알림 받기' 신청, 취소, 단건 조회입니다.
@@ -201,9 +241,25 @@ public class RoutingConfig {
                                                 org.springframework.http.HttpMethod.DELETE)
                                         .filters(
                                                 f ->
-                                                        f.filter(safeReadRetry).removeRequestHeader("Origin")
+                                                        f.filter(safeReadRetry)
+                                                                .removeRequestHeader("Origin")
                                                                 .removeRequestHeader("Cookie"))
                                         .uri("lb://notification-service"))
+                // 쿠폰 공개 조회와 인증 API만 연결하고 내부 잠금 경로는 공개하지 않습니다.
+                .route(
+                        "coupon",
+                        r ->
+                                r.path(
+                                                "/api/v1/coupons",
+                                                "/api/v1/coupons/**",
+                                                "/api/v1/admin/coupons/**")
+                                        .and()
+                                        .predicate(exchange -> couponEnabled)
+                                        .filters(
+                                                f ->
+                                                        f.removeRequestHeader("Origin")
+                                                                .removeRequestHeader("Cookie"))
+                                        .uri("lb://coupon-service"))
                 .build();
     }
 }

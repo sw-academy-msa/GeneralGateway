@@ -19,3 +19,5 @@ Java 21 / Spring Boot 4.1.1 / Spring Cloud 2025.1.4 기반 Server WebFlux Gatewa
 ## AI 개인화 분석 참여
 
 AIService의 BUYER 전용 POST/GET/DELETE /api/v1/ai/analytics/identity와 GET /api/v1/ai/analytics/profile을 lb://ai-service로 연결합니다. 기존 SELLER 분석 결과 GET은 유지하며 내부 /internal/v1/personalization/eligibility는 외부에 라우팅하지 않습니다.
+
+쿠폰 연동은 [상세 문서](docs/coupon-routing.md)를 따릅니다.
