@@ -14,11 +14,16 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RoutingConfig {
     private final boolean couponEnabled;
+    private final boolean aiEventsEnabled;
 
     public RoutingConfig(
             @org.springframework.beans.factory.annotation.Value("${GATEWAY_COUPON_ENABLED:false}")
-                    boolean couponEnabled) {
+                    boolean couponEnabled,
+            @org.springframework.beans.factory.annotation.Value(
+                            "${GATEWAY_AI_EVENTS_ENABLED:false}")
+                    boolean aiEventsEnabled) {
         this.couponEnabled = couponEnabled;
+        this.aiEventsEnabled = aiEventsEnabled;
     }
 
     @Bean
@@ -157,6 +162,20 @@ public class RoutingConfig {
                                                 filters ->
                                                         filters.filter(safeReadRetry)
                                                                 .removeRequestHeader("Origin")
+                                                                .removeRequestHeader("Cookie"))
+                                        .uri("lb://ai-service"))
+                // 행동 이벤트 수집은 쓰기이므로 재시도하지 않고 플래그를 켰을 때만 연결합니다.
+                .route(
+                        "ai-behavior-events",
+                        route ->
+                                route.path("/api/v1/ai/events")
+                                        .and()
+                                        .method(org.springframework.http.HttpMethod.POST)
+                                        .and()
+                                        .predicate(exchange -> aiEventsEnabled)
+                                        .filters(
+                                                filters ->
+                                                        filters.removeRequestHeader("Origin")
                                                                 .removeRequestHeader("Cookie"))
                                         .uri("lb://ai-service"))
                 // Notification의 알림함과 구독 API만 공개합니다. 내부 수신 자격 API는 제외합니다.

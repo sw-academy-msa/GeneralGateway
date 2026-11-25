@@ -149,6 +149,9 @@ public class SecurityConfig {
                                         .pathMatchers(
                                                 HttpMethod.DELETE, "/api/v1/ai/analytics/identity")
                                         .hasRole("BUYER")
+                                        // 행동 이벤트는 구매자 본인 JWT로만 보내며 계정은 AI가 토큰에서 읽습니다.
+                                        .pathMatchers(HttpMethod.POST, "/api/v1/ai/events")
+                                        .hasRole("BUYER")
                                         .pathMatchers("/api/v1/ai", "/api/v1/ai/**")
                                         .denyAll()
                                         // 서비스 JWT는 사용자 역할이 없으므로 알림 사용자 API에 접근할 수 없습니다.

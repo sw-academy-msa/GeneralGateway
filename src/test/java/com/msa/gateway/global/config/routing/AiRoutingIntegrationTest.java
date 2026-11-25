@@ -75,6 +75,7 @@ class AiRoutingIntegrationTest {
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry p) {
+        p.add("GATEWAY_AI_EVENTS_ENABLED", () -> "true");
         p.add(
                 "gateway.auth.jwk-set-uri",
                 () -> "http://127.0.0.1:" + JWKS.getAddress().getPort() + "/jwks");
@@ -225,6 +226,38 @@ class AiRoutingIntegrationTest {
                 .expectStatus()
                 .isNotFound();
         Assertions.assertEquals(after, CALLS.get());
+    }
+
+    /** 행동 이벤트 수집은 BUYER POST만 AI로 보내고 다른 역할과 메서드는 Gateway에서 막습니다. */
+    @Test
+    void behaviorEventsAcceptOnlyBuyerPost() throws Exception {
+        int before = CALLS.get();
+        client.post().uri("/api/v1/ai/events").exchange().expectStatus().isUnauthorized();
+        client.post()
+                .uri("/api/v1/ai/events")
+                .headers(h -> h.setBearerAuth(token("SELLER")))
+                .exchange()
+                .expectStatus()
+                .isForbidden();
+        var buyer = token("BUYER");
+        client.get()
+                .uri("/api/v1/ai/events")
+                .headers(h -> h.setBearerAuth(buyer))
+                .exchange()
+                .expectStatus()
+                .isForbidden();
+        Assertions.assertEquals(before, CALLS.get());
+        client.post()
+                .uri("/api/v1/ai/events")
+                .headers(h -> h.setBearerAuth(buyer))
+                .header("Cookie", "session=fixture")
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .jsonPath("$.headersCleaned")
+                .isEqualTo(true);
+        Assertions.assertEquals(before + 1, CALLS.get());
     }
 
     // 테스트 키/토큰은 메모리에서만 사용하며 Account 개인키를 읽지 않습니다.
